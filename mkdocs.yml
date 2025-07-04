@@ -1,0 +1,81 @@
+site_name: Kaspeak SDK
+site_url: https://kaspeak.github.io/kaspeak-sdk/
+repo_url: https://github.com/kaspeak/kaspeak-sdk
+repo_name: kaspeak-sdk
+docs_dir: docs
+theme:
+    name: material
+    language: ru
+    logo: assets/logo-dark.png
+    favicon: assets/favicon.ico
+    icon:
+        repo: fontawesome/brands/github
+    features:
+        - navigation.footer
+extra:
+    generator: false
+    version:
+        provider: mike
+    social:
+        - icon: fontawesome/brands/github
+          link: https://github.com/kaspeak/kaspeak-sdk
+        - icon: fontawesome/brands/x-twitter
+          link: https://x.com/KaspeakOfficial
+plugins:
+    - search
+    - i18n:
+          languages:
+              - locale: ru
+                name: Русский
+                build: true
+              - locale: en
+                name: English
+                default: true
+                build: true
+                nav_translations:
+                    Главная: Home
+                    Обзор: Overview
+                    Введение: Introduction
+                    Быстрый старт: Quick Start
+                    Основные компоненты: Core Components
+                    Криптография: Cryptography
+                    Модели данных: Data Models
+                    Утилиты: Utilities
+                    Продвинутые темы: Advanced Topics
+                    Шифрование сообщений: Message Encryption
+                    Дополнительно: Additional
+                    Изменения: Changelog
+                    Контрибьюторам: Contributing
+                    Сообщения: Messages
+                    Идентификаторы: Identifiers
+                    Делегирование: Delegation
+          docs_structure: folder
+markdown_extensions:
+    - admonition
+    - toc:
+          permalink: true
+    - pymdownx.highlight:
+          anchor_linenums: true
+          linenums: true
+          guess_lang: false
+    - pymdownx.superfences
+    - pymdownx.inlinehilite
+nav:
+    - Главная: index.md
+    - Обзор:
+          - Введение: 01-overview/intro.md
+          - Быстрый старт: 01-overview/quick-start.md
+    - Основные компоненты:
+          - Kaspeak: 02-core/sdk.md
+          - Сообщения: 02-core/messages.md
+          - Модели данных: 02-core/models.md
+          - Криптография: 02-core/crypto.md
+          - Утилиты: 02-core/utils.md
+    - Продвинутые темы:
+          - Шифрование сообщений: 03-advanced/encryption.md
+          - Идентификаторы: 03-advanced/identifiers.md
+          - Делегирование: 03-advanced/delegation.md
+    - API: 04-api-md/README.md
+    - Дополнительно:
+          - Изменения: 05-meta/changelog.md
+          - Контрибьюторам: 05-meta/contributing.md

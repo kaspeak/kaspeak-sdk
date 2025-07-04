@@ -1,0 +1,10 @@
+{
+	"entryPoints": ["src/index.ts"],
+	"out": "docs/en/04-api-md",
+	"tsconfig": "tsconfig.json",
+	"plugin": ["typedoc-plugin-markdown"],
+	"entryFileName": "README",
+	"readme": "none",
+	"excludePrivate": true,
+	"hideGenerator": true
+}
