@@ -7,7 +7,7 @@ You can get some TKAS on `TESTNET-10` using the [faucet](https://faucet-tn10.kas
 ### Installation
 
 ```bash
-pnpm add kaspeak-sdk
+npm i kaspeak-sdk
 ```
 
 ### Initialization

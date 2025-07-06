@@ -7,7 +7,7 @@
 ### Установка
 
 ```bash
-pnpm add kaspeak-sdk
+npm i kaspeak-sdk
 ```
 
 ### Инициализация

@@ -30,7 +30,7 @@ npm install kaspeak-sdk
 ## Документация
 
 Подробное руководство, примеры и описание API:  
-📚 https://kaspeak.github.io/kaspeak-sdk/0.0.1/
+📚 https://kaspeak.github.io/kaspeak-sdk/latest/
 
 ---
 
