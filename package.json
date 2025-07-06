@@ -1,6 +1,6 @@
 {
 	"name": "kaspeak-sdk",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"main": "pkg/cjs/index.cjs",
 	"module": "pkg/esm/index.js",
 	"exports": {
