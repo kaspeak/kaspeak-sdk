@@ -28,6 +28,34 @@ npm install kaspeak-sdk
 
 ---
 
+## Quick Start and Examples
+
+To quickly get familiar with the SDK capabilities, use the ready-made examples:
+
+* **View all available examples:**
+
+  ```bash
+  npx kaspeak-example
+  ```
+
+* **Run a specific example:**
+
+  ```bash
+  npx kaspeak-example quick-start
+  npx kaspeak-example delegate
+  npx kaspeak-example secret-message
+  ```
+
+* **Run an example using npm scripts:**
+
+  ```bash
+  npm run example:quick-start
+  npm run example:secret-message
+  npm run example:delegate
+  ```
+
+---
+
 ## Documentation
 
 Comprehensive guide, examples, and API reference:  
