@@ -1,6 +1,6 @@
 {
 	"name": "kaspeak-sdk",
-	"version": "0.0.2",
+	"version": "0.1.0",
 	"main": "pkg/cjs/index.cjs",
 	"module": "pkg/esm/index.js",
 	"exports": {
@@ -22,7 +22,13 @@
 		"docs:build": "npm run docs:api && mkdocs build",
 		"docs:serve": "mkdocs serve -a 127.0.0.1:8000",
 		"docs:version": "mike deploy --update-aliases",
-		"docs:alias": "mike set-default latest"
+		"docs:alias": "mike set-default latest",
+		"example:quick-start": "node examples/quick-start.cjs",
+		"example:secret-message": "node examples/secret-message.cjs",
+		"example:delegate": "node examples/delegate.cjs"
+	},
+	"bin": {
+		"kaspeak-example": "bin/run_example.cjs"
 	},
 	"author": "Kaspeak <kaspeak@proton.me>",
 	"repository": {
@@ -30,13 +36,26 @@
 		"url": "git+https://github.com/kaspeak/kaspeak-sdk.git"
 	},
 	"license": "MIT",
-	"keywords": ["kas", "kaspa", "kaspeak", "kaspeak-sdk", "messaging", "web3", "messenger", "social", "encryption", "wasm"],
+	"keywords": [
+		"kas",
+		"kaspa",
+		"kaspeak",
+		"kaspeak-sdk",
+		"messaging",
+		"web3",
+		"messenger",
+		"social",
+		"encryption",
+		"wasm"
+	],
 	"bugs": {
 		"url": "https://github.com/kaspeak/kaspeak-sdk/issues"
 	},
 	"homepage": "https://github.com/kaspeak/kaspeak-sdk/#readme",
 	"files": [
-		"pkg"
+		"pkg",
+		"bin",
+		"examples"
 	],
 	"type": "module",
 	"dependencies": {
@@ -47,7 +66,7 @@
 		"bn.js": "^5.2.2",
 		"cborg": "^4.2.12",
 		"elliptic": "^6.6.1",
-		"kaspa-wasm": "github:kaspeak/kaspa-wasm#v1.0.0",
+		"kaspa-wasm": "github:kaspeak/kaspa-wasm#v1.0.1",
 		"loglevel": "^1.9.2"
 	},
 	"devDependencies": {

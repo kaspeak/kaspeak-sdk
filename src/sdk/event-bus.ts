@@ -83,7 +83,7 @@ export class EventBus<TEvents extends Record<string, any>> {
 	/**
 	 * Emit an event, invoking all current listeners asynchronously
 	 * via `queueMicrotask`. Any listener errors are caught and printed
-	 * to `console.error` so that other listeners still execute.
+	 * to `logger.error` so that other listeners still execute.
 	 *
 	 * @typeParam K - The key of the event in `TEvents`.
 	 * @param event - The event key to emit.

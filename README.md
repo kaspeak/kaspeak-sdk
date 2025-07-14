@@ -1,5 +1,6 @@
 # Kaspeak SDK
 
+[![npm](https://img.shields.io/npm/v/kaspeak-sdk)](https://www.npmjs.com/package/kaspeak-sdk)
 [![en](https://img.shields.io/badge/lang-en-red.svg)](./README.md)
 [![ru](https://img.shields.io/badge/lang-ru-green.svg)](./README.ru.md)
 
@@ -24,6 +25,34 @@ All network operations, message processing, data packing and unpacking, cryptogr
 ```bash
 npm install kaspeak-sdk
 ```
+
+---
+
+## Quick Start and Examples
+
+To quickly get familiar with the SDK capabilities, use the ready-made examples:
+
+* **View all available examples:**
+
+  ```bash
+  npx kaspeak-example
+  ```
+
+* **Run a specific example:**
+
+  ```bash
+  npx kaspeak-example quick-start
+  npx kaspeak-example delegate
+  npx kaspeak-example secret-message
+  ```
+
+* **Run an example using npm scripts:**
+
+  ```bash
+  npm run example:quick-start
+  npm run example:secret-message
+  npm run example:delegate
+  ```
 
 ---
 

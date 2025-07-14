@@ -1,8 +1,8 @@
 # Kaspeak SDK
 
-This page provides an overview of key methods and features of **Kaspeak SDK**. Detailed cryptographic and data-format schemes are covered separately.
+This page provides a concise guide to the main methods and features of **Kaspeak SDK**. Detailed data formats and cryptography schemes are described in corresponding documentation sections.
 
-Below is a **practical guide to using the SDK**.
+This is a **practical guide to using the SDK**.
 
 ---
 
@@ -13,76 +13,88 @@ Initialize the SDK:
 ```js
 import { Kaspeak, randomBytes } from "kaspeak-sdk";
 
-const sdk = await Kaspeak.create(randomBytes(32), "CHAT");
+const sdk = await Kaspeak.create(randomBytes(32), "CHAT", "testnet-10");
 await sdk.connect();
 ```
 
-### Method `create(privateKey, prefix)` Parameters
+### `create(privateKey, prefix, networkId?)` Method Parameters
 
-- **`privateKey`** – can be a `bigint`, `number`, `Uint8Array`, or hex-string.
-- **`prefix`** – unique 4-character ASCII prefix per application, avoiding message conflicts.
+* **`privateKey`** — private key for the address, represented as `bigint`, `number`, `Uint8Array`, or hex-string.
+* **`prefix`** — unique ASCII prefix for your application, up to 4 characters. This prevents messages from different apps from overlapping.
+* **`networkId`** *(optional)* — `"mainnet"`, `"testnet-10"` (default).
 
-After `create()` call, SDK is ready to connect.
+After calling `create()`, the SDK is fully initialized and ready to connect.
 
-### Method `connect(networkId?, url?)` Parameters
+### `connect(url?)` Method Parameters
 
-| Parameter    | Default          | Description                               |
-|--------------|------------------|-------------------------------------------|
-| `networkId`  | `"testnet-10"`   | Kaspa network (`"mainnet"` or testnets)   |
-| `url`        | *(automatic)*    | Specific Kaspa node URL (optional)        |
+* **`url`** *(optional)* — URL to connect to a specific Kaspa node. If not specified, the SDK will automatically select a node.
 
 ---
 
-## Event Handling & Error Management
-
-Kaspeak SDK uses event-driven design:
+## Event Subscription and Error Handling
 
 ```js
-sdk.on("KaspeakMessageReceived", async ({ header, data }) => {
-	// incoming messages handling
+sdk.on("message", async ({ header, data }) => {
+    /* handle incoming messages */
 });
 
 sdk.on("error", console.error);
 ```
 
-- **`KaspeakMessageReceived`** triggers on every incoming payload.
-- **`error`** captures network issues, serialization errors, and other SDK issues.
+| Event        | Data                     |
+| ------------ | ------------------------ |
+| `message`    | `{ header, data }`       |
+| `balance`    | `{ balance, utxoCount }` |
+| `connect`    | `void`                   |
+| `disconnect` | `void`                   |
+| `error`      | `string`                 |
+
+* **`message`** fires for every incoming payload, even if its type is not registered.
+* **`balance`** is triggered on any balance change for the SDK address.
+* **`connect`** is called immediately after successfully establishing an RPC connection to the Kaspa network.
+* **`disconnect`** is triggered when the current RPC connection is closed.
+* **`error`** is a stub for future functionality.
 
 ---
 
-## Creating Custom Message Types
+## Working with Custom Message Types
 
-Custom messages can be created by subclassing `BaseMessage`:
+To create your own message types:
 
 ```js
 class ChatMsg extends BaseMessage {
-	static messageType = 1337; // Unique message type code
-	static requiresEncryption = true; // Wether message requiries encryption 
+    static messageType = 1337; // unique message type code
+    static requiresEncryption = true; // whether encryption is required
 
-	constructor(text = "", header) {
-		super(header);
-		this.text = text;
-	}
+    constructor(text = "", header) {
+        super(header);
+        this.text = text;
+    }
 
-	toPlainObject() { return { t: this.text }; }
-	fromPlainObject({ t }) { this.text = t; }
+    toPlainObject() {
+        return { t: this.text };
+    }
+
+    fromPlainObject({ t }) {
+        this.text = t;
+    }
 }
 
 sdk.registerMessage(ChatMsg, async (header, rawData) => {
-	const secret = header.peer.sharedSecret; // retrieve shared secret
-	const chat = await sdk.decode(header, rawData, secret);
-	console.log(chat.text);
+    const secret = header.peer.sharedSecret; // retrieve shared secret
+    const chat = await sdk.decode(header, rawData, secret);
+    console.log(chat.text);
 });
 ```
 
-Method `registerMessage(ctor, worker?)`:
+The `registerMessage(ctor, worker?)` method:
 
-- **`ctor`** – `BaseMessage` subclass.
-- **`worker`** – optional handler for incoming messages of that type.
+* **`ctor`** — class that extends `BaseMessage`.
+* **`worker`** — handler function for incoming messages of this type.
 
 ---
 
-## Core Message Operations
+## Core SDK Methods for Messaging
 
 Encoding and sending a message:
 
@@ -91,51 +103,54 @@ const encoded = await sdk.encode(messageInstance, secret);
 const tx = await sdk.createTransaction(encoded.length);
 const opIds = sdk.getOutpointIds(tx);
 const payload = await sdk.createPayload(
-	opIds,
-	messageInstance.messageType,
-	Identifier.random(),
-	encoded
+    opIds,
+    messageInstance.messageType,
+    SecretIdentifier.random(),
+    encoded
 );
 await sdk.sendTransaction(tx, payload);
 ```
 
-Decoding received messages:
+Decoding and handling a message:
 
 ```js
 const message = await sdk.decode(header, rawData, secret);
 ```
 
-Obtaining conversation keys:
+Getting conversation keys (for encryption and identifiers):
 
 ```js
 const { secret, chainKey } = sdk.deriveConversationKeys(remotePublicKey);
 ```
 
-Checking wallet balance:
+Checking balance:
 
 ```js
-const kasBalance = await sdk.getBalance();
+const { balance, utxoCount } = await sdk.getBalance();
 ```
 
 ---
 
-## SDK Configuration Options
+## SDK Settings and Parameters
+
+Kaspeak SDK has flexible configuration:
 
 ```js
-sdk.setPrefixFilterEnabled(false); // Allow messages from any prefix
-sdk.setSignatureVerificationEnabled(false); // Disable signature verification (unsafe!)
-sdk.setPriorityFee(0.1); // Transaction fee adjustment (KAS)
+sdk.setPrefixFilterEnabled(false); // Accept messages from any prefix
+sdk.setSignatureVerificationEnabled(false); // Disable Schnorr signature verification (unsafe!)
+sdk.setWaitForConnectionEnabled(true); // If true, all network methods wait for connection instead of instantly throwing "Node is not connected" error
+sdk.setPriorityFee(0.1); // Set extra fee for sending a transaction (in KAS)
+sdk.setFeeLevel(FeeLevel); // Set dynamic fee calculation ("low" | "normal" | "priority" (default))
 ```
 
 ---
 
-## Additional Methods & Properties
+## Additional SDK Methods and Properties
 
-| Method/Property               | Description                                    |
-|-------------------------------|------------------------------------------------|
-| `sdk.address`                 | SDK-generated Kaspa address                    |
-| `sdk.publicKey`               | Hex representation of public key               |
-| `sdk.balance`                 | Last retrieved wallet balance                  |
-| `sdk.utxoCount`               | Count of UTXOs in wallet                       |
-| `sdk.isConnected`             | Current network connection status              |
-| `sdk.getAddressFromPublicKey()` | Derives Kaspa address from public key        |
+* **sdk.address** — The Kaspa address used, derived from the private key.
+* **sdk.publicKey** — Public key (hex, 33 bytes in compressed format).
+* **sdk.balance** — Actual balance of the address in use.
+* **sdk.utxoCount** — Current number of UTXOs for the address.
+* **sdk.isConnected** — Status of the current connection to the Kaspa network.
+* **sdk.getAddressFromPublicKey()** — Get Kaspa address from public key.
+* **sdk.transferFunds()** — Send KAS to one or more addresses.
