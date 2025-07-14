@@ -15,14 +15,38 @@ npm i kaspeak-sdk
 ```js
 const { Kaspeak } = require("kaspeak-sdk");
 
-const PREFIX = "TEST"
-const PRIV_KEY = 6
+const PREFIX = "TEST";
+const PRIV_KEY = 6;
 
-const sdk = await Kaspeak.create(PRIV_KEY, PREFIX);
+const sdk = await Kaspeak.create(PRIV_KEY, PREFIX, "testnet-10");
 await sdk.connect();
 ```
 > `PREFIX` это уникальное название вашего приложения, размер которого ограничен 4 байтами.
 > Благодаря ему, сообщения других пользователей SDK не будут пересекаться с Вашими сообщениями.
+
+### Запуск примеров
+
+Чтобы увидеть список доступных примеров, выполните:
+
+```bash
+npx kaspeak-example
+```
+
+Чтобы сразу запустить определённый пример, используйте одну из команд:
+
+```bash
+npx kaspeak-example quick-start
+npx kaspeak-example delegate
+npx kaspeak-example secret-message
+```
+
+Также для запуска основных примеров можно воспользоваться командами:
+
+```bash
+npm run example:quick-start
+npm run example:secret-message
+npm run example:delegate
+```
 
 ### Создание, отправка и прием простого незашифрованного сообщения
 
@@ -61,8 +85,8 @@ async function exampleHandler(header, raw) {
 }
 
 async function main() {
-	sdk = await Kaspeak.create(PRIV_KEY, PREFIX);
-	await sdk.connect(NETWORK_ID);
+	sdk = await Kaspeak.create(PRIV_KEY, PREFIX, NETWORK_ID);
+	await sdk.connect();
 	console.log("Public key:", sdk.publicKey);
 	console.log("Address:", sdk.address);
 

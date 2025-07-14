@@ -1,8 +1,8 @@
 # Quick Start
 
-By default, Kaspeak SDK operates on the `TESTNET-10` network, but nothing prevents you from using `MAINNET` for your application.
+By default, Kaspeak SDK operates on the `TESTNET-10` network, but you can also use `MAINNET` for your application.
 
-You can get some TKAS on `TESTNET-10` using the [faucet](https://faucet-tn10.kaspanet.io/).
+You can get some TKAS on `TESTNET-10` from the [faucet](https://faucet-tn10.kaspanet.io/).
 
 ### Installation
 
@@ -18,14 +18,38 @@ const { Kaspeak } = require("kaspeak-sdk");
 const PREFIX = "TEST";
 const PRIV_KEY = 6;
 
-const sdk = await Kaspeak.create(PRIV_KEY, PREFIX);
+const sdk = await Kaspeak.create(PRIV_KEY, PREFIX, "testnet-10");
 await sdk.connect();
 ```
 
-> `PREFIX` is your application's unique name, limited to 4 bytes.
-> It prevents interference from other SDK users' messages.
+> `PREFIX` is your application's unique name, limited to 4 ASCII characters.
+> This prevents your messages from conflicting with other SDK users.
 
-### Creating, sending, and receiving an unencrypted message
+### Running examples
+
+To see the list of available examples, run:
+
+```bash
+npx kaspeak-example
+```
+
+To immediately run a specific example, use one of these commands:
+
+```bash
+npx kaspeak-example quick-start
+npx kaspeak-example delegate
+npx kaspeak-example secret-message
+```
+
+You can also run main examples using:
+
+```bash
+npm run example:quick-start
+npm run example:secret-message
+npm run example:delegate
+```
+
+### Creating, sending, and receiving a simple unencrypted message
 
 ```js
 const { Kaspeak, BaseMessage, SecretIdentifier } = require("kaspeak-sdk");
@@ -62,8 +86,8 @@ async function exampleHandler(header, raw) {
 }
 
 async function main() {
-	sdk = await Kaspeak.create(PRIV_KEY, PREFIX);
-	await sdk.connect(NETWORK_ID);
+	sdk = await Kaspeak.create(PRIV_KEY, PREFIX, NETWORK_ID);
+	await sdk.connect();
 	console.log("Public key:", sdk.publicKey);
 	console.log("Address:", sdk.address);
 
@@ -81,6 +105,7 @@ async function main() {
 main();
 ```
 
-> To run this example on the main network, use `NETWORK_ID = "mainnet"`.
+> To run this example on mainnet, use `NETWORK_ID = "mainnet"`
 
-> This example **DOES NOT** use message encryption. If you wish to send encrypted messages, see [Message Encryption](../03-advanced/encryption.md).
+> This example **DOES NOT** use message encryption.
+> If you want to send encrypted messages, see [Message Encryption](../03-advanced/encryption.md).

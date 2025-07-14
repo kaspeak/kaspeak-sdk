@@ -24,7 +24,7 @@ const ok  = await sid.verify(sig, "Hello, Kaspa") // true
 * `SecretIdentifier` stores a **private** scalar and can `sign`.
 * A regular `Identifier` stores only the point and can `verify`.
 
-You can use `Identifier` and `SecretIdentifier` as simple recurring identifiers, without involving the more advanced cryptography described below. However, if you want to unlock all the features of Kaspeak SDK, it is recommended to carefully read the following section, which brings a new element of privacy to the transparent blockDAG.
+You can use `Identifier` and `SecretIdentifier` as simple recurring identifiers, without involving the more advanced cryptography described below. However, if you want to unlock all the features of Kaspeak SDK, it is recommended to carefully read the following section, which brings a new element of privacy to the transparent blockdag.
 
 ## The Essence
 

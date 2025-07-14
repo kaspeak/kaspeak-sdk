@@ -1,11 +1,6 @@
 import { Payload } from "../models";
 import { Identifier, Peer } from "../crypto";
-
-export interface BlockMeta {
-	hash: string;
-	timestamp: bigint;
-	daaScore: bigint;
-}
+import type { BlockMeta } from "../sdk/types";
 
 export class MessageHeader {
 	txid: string;

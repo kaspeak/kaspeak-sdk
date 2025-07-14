@@ -25,9 +25,6 @@ plugins:
     - search
     - i18n:
           languages:
-              - locale: ru
-                name: Русский
-                build: true
               - locale: en
                 name: English
                 default: true
@@ -49,6 +46,9 @@ plugins:
                     Сообщения: Messages
                     Идентификаторы: Identifiers
                     Делегирование: Delegation
+              - locale: ru
+                name: Русский
+                build: true
           docs_structure: folder
 markdown_extensions:
     - admonition
@@ -62,9 +62,7 @@ markdown_extensions:
     - pymdownx.inlinehilite
 nav:
     - Главная: index.md
-    - Обзор:
-          - Введение: 01-overview/intro.md
-          - Быстрый старт: 01-overview/quick-start.md
+    - Быстрый старт: 01-overview/quick-start.md
     - Основные компоненты:
           - Kaspeak: 02-core/sdk.md
           - Сообщения: 02-core/messages.md

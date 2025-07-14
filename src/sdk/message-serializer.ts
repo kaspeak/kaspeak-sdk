@@ -126,11 +126,11 @@ export class MessageSerializer {
 				const maybePlain = aead.open(nonce, ciphertext);
 
 				if (!maybePlain) {
-					logger.warn(`Decryption failed: invalid key for ${typeof instance}`);
+					logger.debug(`Decryption failed: invalid key for ${typeof instance}`);
 					return new UnknownMessage(data, "Decryption failed: invalid key", 0);
 				}
 				if (maybePlain.length === 0) {
-					logger.warn(`Decryption failed: empty decrypted data for ${typeof instance}`);
+					logger.debug(`Decryption failed: empty decrypted data for ${typeof instance}`);
 					return new UnknownMessage(data, "Decryption failed: empty decrypted data", 1);
 				}
 				plaintext = maybePlain;
@@ -138,7 +138,7 @@ export class MessageSerializer {
 				plaintext = data;
 			}
 		} catch (e: any) {
-			logger.warn(`Decryption failed for ${typeof instance}`, e);
+			logger.debug(`Decryption failed for ${typeof instance}`, e);
 			return new UnknownMessage(data, `Decryption failed: ${e.message}`, 2);
 		}
 
@@ -149,7 +149,7 @@ export class MessageSerializer {
 		try {
 			decompressed = await decompressZstd(plaintext);
 		} catch (e: any) {
-			logger.warn(`Decompress failed for ${typeof instance}`, e);
+			logger.debug(`Decompress failed for ${typeof instance}`, e);
 			return new UnknownMessage(data, `Decompress failed: ${e.message}`, 3);
 		}
 
@@ -160,7 +160,7 @@ export class MessageSerializer {
 		try {
 			obj = cborDecode(decompressed);
 		} catch (e: any) {
-			logger.warn(`CBOR decode failed for ${typeof instance}`, e);
+			logger.debug(`CBOR decode failed for ${typeof instance}`, e);
 			return new UnknownMessage(data, `CBOR decode failed: ${e.message}`, 4);
 		}
 
@@ -172,7 +172,7 @@ export class MessageSerializer {
 				instance.fromPlainObject(obj);
 			}
 		} catch (e: any) {
-			logger.warn(`fromPlainObject failed for ${typeof instance}`, e);
+			logger.debug(`fromPlainObject failed for ${typeof instance}`, e);
 			return new UnknownMessage(data, `fromPlainObject failed: ${e.message}`, 5);
 		}
 		return instance;

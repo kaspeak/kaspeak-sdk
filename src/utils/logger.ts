@@ -56,7 +56,7 @@ export function setLogLevel(level: LogLevel) {
 		try {
 			window.localStorage.setItem("KASPEAK_LOG_LEVEL", String(level));
 		} catch {
-			logger.warn("Не удалось сохранить уровень логирования в localStorage");
+			logger.warn("Failed to save logging level to localStorage");
 		}
 	}
 }

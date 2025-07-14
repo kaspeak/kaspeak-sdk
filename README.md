@@ -1,5 +1,6 @@
 # Kaspeak SDK
 
+[![npm](https://img.shields.io/npm/v/kaspeak-sdk)](https://www.npmjs.com/package/kaspeak-sdk)
 [![en](https://img.shields.io/badge/lang-en-red.svg)](./README.md)
 [![ru](https://img.shields.io/badge/lang-ru-green.svg)](./README.ru.md)
 
