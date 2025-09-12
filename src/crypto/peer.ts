@@ -1,5 +1,7 @@
 import { Point, Secp256k1 } from "./secp256k1";
+import { Payload } from "../models";
 import { bytesToInt, sha256FromBytes } from "./utils";
+import { modN } from "./secp256k1";
 
 export class Peer {
 	readonly address: string;
@@ -11,10 +13,10 @@ export class Peer {
 	#sharedSecret: Uint8Array | null = null;
 	#chainKey: bigint | null = null;
 
-	constructor(address: string, publicKey: Uint8Array, signature: Uint8Array, isOwn: boolean, privateKey: bigint) {
+	constructor(address: string, payload: Payload, isOwn: boolean, privateKey: bigint) {
 		this.address = address;
-		this.#publicKey = new Uint8Array(publicKey);
-		this.#signature = new Uint8Array(signature);
+		this.#publicKey = new Uint8Array(payload.publicKey);
+		this.#signature = new Uint8Array(payload.signature);
 		this.isOwn = isOwn;
 		this.#privateKey = privateKey;
 	}
@@ -40,7 +42,7 @@ export class Peer {
 	get chainKey(): bigint {
 		if (!this.#chainKey) {
 			const chainKeyBytes = sha256FromBytes(this.sharedSecret);
-			this.#chainKey = bytesToInt(chainKeyBytes);
+			this.#chainKey = modN(bytesToInt(chainKeyBytes));
 		}
 		return this.#chainKey;
 	}

@@ -24,7 +24,7 @@ class SecretNote extends BaseMessage {
 
 async function main() {
 	const server_sdk = await Kaspeak.create(SERVER_PRIV_KEY, PREFIX);
-	await server_sdk.connect();
+	await server_sdk.connectNode();
 	console.log("Server pubkey", server_sdk.publicKey);
 
 	server_sdk.registerMessage(SecretNote, async (header, rawData) => {
@@ -44,7 +44,7 @@ async function main() {
 	const outpointIds = server_sdk.getOutpointIds(transaction);
 
 	const identifier = SecretIdentifier.random();
-	const rawPayload = await client_sdk.createPayload(outpointIds, SecretNote.messageType, identifier, encoded);
+	const rawPayload = await client_sdk.createPayload(outpointIds, SecretNote, identifier, encoded);
 
 	await server_sdk.sendTransaction(transaction, rawPayload);
 }

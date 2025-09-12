@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0 — 2025-08-25
+* **BREAKING:** Protocol updated to version 2. Added 1 extra byte for `SignatureType`.
+* **BREAKING:** `sdk.createPayload` now takes the message class itself as the second argument instead of `messageType`.
+* **BREAKING:** `sdk.connect` is deprecated. Use `sdk.connectNode` instead.
+* **BREAKING:** Subscriptions to `connect`/`disconnect` events are deprecated. Use `node-connect`/`node-disconnect` instead.
+* `kaspa.RpcClient`, `kaspa.UtxoProcessor`, `kaspa.UtxoContext`, as well as the initialized `kaspa-wasm` module, are now directly accessible via `sdk` instance getters for more fine-grained network interaction.
+* Added new event subscriptions: `indexer-connect`, `indexer-disconnect`, `mature-incoming-tx`, `tx-reorg`.
+* Added indexer interaction methods: `sdk.connectIndexer`, `sdk.indexerSend`, `sdk.indexerRequest`.
+* Added method `sdk.getXPointFromAddress`.
+* Added method `sdk.setTransactionMaturityDAA`.
+* `sdk.createTransaction` now accepts an additional optional parameter `recipients`, enabling sending data along with fund transfers.
+* `MessageHeader` now includes additional fields: `live`, `signatureType`, `isPayment`, `txOutputs`, and an optional `requestId`.
+* Minor codebase fixes and improvements.
+
 ## 0.1.0 — 2025-07-14
 * **BREAKING:** Fixed an error that prevented sending a message on the *mainnet* network.
 * **BREAKING:** Subscription event `KaspeakMessageReceived` renamed to `message`.

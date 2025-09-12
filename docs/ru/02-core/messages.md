@@ -37,7 +37,7 @@ class MyMessage extends BaseMessage {
 
 (async () => {
     const sdk = await Kaspeak.create(6, "TEST");
-    await sdk.connect();
+    await sdk.connectNode();
 
     sdk.registerMessage(MyMessage, async (h, raw) => {
         const msg = await sdk.decode(h, raw);
@@ -49,7 +49,7 @@ class MyMessage extends BaseMessage {
     const id = SecretIdentifier.random();
     const tx = await sdk.createTransaction(body.length);
     const ids = sdk.getOutpointIds(tx);
-    const plHex = await sdk.createPayload(ids, MyMessage.messageType, id, body);
+    const plHex = await sdk.createPayload(ids, MyMessage, id, body);
     await sdk.sendTransaction(tx, plHex);
 })();
 ```
@@ -81,7 +81,7 @@ class SecretNote extends BaseMessage {
 
 (async () => {
     const sdk = await Kaspeak.create(6, "TEST");
-    await sdk.connect();
+    await sdk.connectNode();
 
     sdk.registerMessage(SecretNote, async (h, raw) => {
         const secret = h.peer.sharedSecret;
@@ -95,7 +95,7 @@ class SecretNote extends BaseMessage {
     const id = SecretIdentifier.random();
     const tx = await sdk.createTransaction(body.length);
     const ids = sdk.getOutpointIds(tx);
-    const plHex = await sdk.createPayload(ids, SecretNote.messageType, id, body);
+    const plHex = await sdk.createPayload(ids, SecretNote, id, body);
     await sdk.sendTransaction(tx, plHex);
 })();
 ```

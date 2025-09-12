@@ -1,4 +1,5 @@
 import { BaseMessage, MessageHeader } from "../models";
+import type { SignatureType } from "../sdk/types";
 
 /**
  * Constructor signature for a message class that can be instantiated by the
@@ -17,6 +18,8 @@ export interface MessageClass<T extends BaseMessage = BaseMessage> {
 	messageType: number;
 	/** Indicates if the message requires encryption when transported. */
 	requiresEncryption: boolean;
+
+	signatureType: SignatureType;
 }
 
 /**

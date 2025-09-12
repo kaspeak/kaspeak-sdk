@@ -19,7 +19,7 @@ const PREFIX = "TEST";
 const PRIV_KEY = 6;
 
 const sdk = await Kaspeak.create(PRIV_KEY, PREFIX, "testnet-10");
-await sdk.connect();
+await sdk.connectNode();
 ```
 
 > `PREFIX` is your application's unique name, limited to 4 ASCII characters.
@@ -87,7 +87,7 @@ async function exampleHandler(header, raw) {
 
 async function main() {
 	sdk = await Kaspeak.create(PRIV_KEY, PREFIX, NETWORK_ID);
-	await sdk.connect();
+	await sdk.connectNode();
 	console.log("Public key:", sdk.publicKey);
 	console.log("Address:", sdk.address);
 
@@ -98,7 +98,7 @@ async function main() {
 	const identifier = SecretIdentifier.random();
 	const tx = await sdk.createTransaction(encoded.length);
 	const opIds = sdk.getOutpointIds(tx);
-	const payload = await sdk.createPayload(opIds, ExampleMessage.messageType, identifier, encoded);
+	const payload = await sdk.createPayload(opIds, ExampleMessage, identifier, encoded);
 	await sdk.sendTransaction(tx, payload);
 }
 

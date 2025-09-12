@@ -1,12 +1,30 @@
-import { bytesToInt, hexToBytes, intToBytes, modP, modInv, sha256FromBytes } from "./utils";
+import { bytesToInt, hexToBytes, intToBytes, modInv, sha256FromBytes } from "./utils";
 import { ProjectivePoint } from "@noble/secp256k1";
 
 export const P = 115792089237316195423570985008687907853269984665640564039457584007908834671663n;
+const TWO_512 = 1n << 512n;
+const MU = TWO_512 / P;
 export const N = 115792089237316195423570985008687907852837564279074904382605163141518161494337n;
 export const A = 0n;
 export const B = 7n;
 export const Gx = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798n;
 export const Gy = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8n;
+
+export function modN(x: bigint): bigint {
+	const r = x % N;
+	return r >= 0n ? r : r + N;
+}
+
+export function modP(x: bigint): bigint {
+	let z = x;
+	if (z < 0n) z = (z % P) + P;
+	if (z < P) return z;
+	const q = (z * MU) >> 512n;
+	let r = z - q * P;
+	if (r < 0n) r += P;
+	while (r >= P) r -= P;
+	return r;
+}
 
 function sqr(x: bigint): bigint {
 	return modP(x * x);

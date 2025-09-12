@@ -1,5 +1,10 @@
-export const HEADER_SIZE = 143;
+export const HEADER_SIZE = 144;
 export const MARKER = new Uint8Array([0x4b, 0x53, 0x50, 0x4b]);
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 export const ZSTD_COMPRESSION_LEVEL = 16;
 export const DEFAULT_NETWORK_ID = "testnet-10";
+export const DEFAULT_INDEXER_URL = "ws://localhost:8765/ws";
+export const INDEXER_BASE_DELAY = 1_000;
+export const INDEXER_MAX_DELAY = 30_000;
+export const INDEXER_BATCH_DELAY = 5;
+export const INDEXER_BATCH_MAX = 32;

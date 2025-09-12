@@ -141,7 +141,7 @@ export class Identifier {
 	 * @returns A Promise that resolves to a boolean indicating whether the signature is valid.
 	 */
 	async verify(sig: Uint8Array, msg: Uint8Array | string): Promise<boolean> {
-		return Schnorr.verify(sig, msg, this.hex);
+		return Schnorr.verify(sig, msg, [this.hex]);
 	}
 }
 
@@ -206,6 +206,26 @@ export class SecretIdentifier extends Identifier {
 
 	/** Produce Schnorr signature of `msg` with the stored secret scalar. */
 	async sign(msg: Uint8Array | string): Promise<Uint8Array> {
-		return Schnorr.sign(msg, this.secret);
+		return Schnorr.sign(msg, [this.secret]);
+	}
+
+	private jumpSecret(factor: bigint): SecretIdentifier {
+		const f = factor % N;
+		const d = (this.secret * f) % N;
+		if (d === 0n) throw new Error("secret must be non-zero");
+		return new SecretIdentifier(d);
+	}
+
+	next(chainKey: bigint, count: number | bigint = 1): SecretIdentifier {
+		const c = BigInt(count);
+		const step = c === 1n ? chainKey : powModW4(chainKey, c, N);
+		return this.jumpSecret(step);
+	}
+
+	prev(chainKey: bigint, count: number | bigint = 1): SecretIdentifier {
+		const kInv = modInv(chainKey, N);
+		const c = BigInt(count);
+		const step = c === 1n ? kInv : powModW4(kInv, c, N);
+		return this.jumpSecret(step);
 	}
 }

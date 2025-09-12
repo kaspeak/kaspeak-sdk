@@ -1,7 +1,7 @@
 # Идентификаторы
 
 > **Любую сущность можно выразить точкой на кривой secp256k1**.  
->  Чат, пользователь, группа, конкретное сообщение — всё может стать публичной точкой, если нам это удобно.
+> Чат, пользователь, группа, конкретное сообщение — всё может стать публичной точкой, если нам это удобно.
 
 В контексте использования точки как идентификатора мы получаем несколько ценных возможностей:
 
@@ -9,20 +9,93 @@
 вокруг сущности, которой они принадлежат.  
 * Любой, кто создал сущность, может доказать свое авторство, что на уровне криптографии создает примитивную систему управления.
 Например, создатель канала может публиковать свои сообщения, добавляя к ним подпись с помощью имеющегося у него скаляра.
-Тем самым любой участник канала может убедиться, что то что он читает было написано истинным владельцем, а не злоумышленником.
+Тем самым любой участник канала может убедиться, что то что он читает было написано истинным владельцем, а не подставным лицом.
 
-### Подпись и проверка
+## Подпись и проверка
 
-Так как каждый `Identifier` может служить x-only публичным ключом Schnorr-подписи, то Kaspeak SDK по умолчанию поддерживает возможность подписывать сообщения и проверять подписи прямо в обьекте `Identifier`
+### Идентификатор как сущность и права владения
+
+`Identifier` — абстрактная сущность: канал, группа, тема и т. п.  
+Владение `SecretIdentifier` означает владение правами на эту сущность: можно публиковать от её имени и доказывать авторство.
+
+---
+
+### Подпись произвольных данных
+
+Любое сообщение можно подписать `SecretIdentifier`, а проверять — **и** по публичному `Identifier`, **и** по `SecretIdentifier`.
 
 ```js
-const sid = SecretIdentifier.random()
-const sig = await sid.sign("Hello, Kaspa")
-const ok  = await sid.verify(sig, "Hello, Kaspa") // true
+const { SecretIdentifier } = require("kaspeak-sdk");
+
+const sid = SecretIdentifier.random();
+const sig = await sid.sign("hello");
+const ok1 = await sid.verify(sig, "hello");
 ```
 
-* `SecretIdentifier` хранит **приватный** скаляр и умеет `sign`.
-* Обычный `Identifier` хранит только точку и умеет `verify`.
+```js
+const { Identifier, SecretIdentifier } = require("kaspeak-sdk");
+
+const sid = SecretIdentifier.random();
+const id = Identifier.fromHex(sid.hex);
+const sig = await sid.sign("hello");
+const ok2 = await id.verify(sig, "hello");
+```
+
+---
+
+### Типы подписей:
+
+В Kaspeak SDK есть два режима подписи сообщений:
+
+- `single` — подпись только приватным ключом отправителя (по умолчанию).
+- `multi` — агрегированная подпись из секретного ключа отправителя и **секретного идентификатора** (`SecretIdentifier`).
+
+Выбор режима задаётся статическим полем класса сообщения.
+
+#### Выбор режима подписи для сообщения
+
+```ts
+import { BaseMessage, type SignatureType } from "kaspeak-sdk";
+
+export class ChannelMessage extends BaseMessage {
+	static messageType = 3;
+	static signatureType: SignatureType = "multi";
+}
+```
+
+#### Отправка сообщения в режиме мультподписи
+
+> **ОТПРАВКА** сообщения с мультподписью возможна **только при передаче `SecretIdentifier`** в `sdk.createPayload` — его секрет участвует в агрегации подписи. Для отправки сообщения в режиме `single` допустима передача и обычного `Identifier`, и `SecretIdentifier`. Не передавайте секрет идентификатора в открытом виде.
+
+```js
+const { Kaspeak, SecretIdentifier } = require("kaspeak-sdk");
+
+const sdk = await Kaspeak.create(6, "TEST");
+await sdk.connectNode();
+
+const msg = new ChannelMessage();
+const body = await sdk.encode(msg);
+
+const channel = SecretIdentifier.random();
+const tx = await sdk.createTransaction(body.length);
+const outIds = sdk.getOutpointIds(tx);
+
+const plHex = await sdk.createPayload(outIds, ChannelMessage, channel, body);
+const txid = await sdk.sendTransaction(tx, plHex);
+```
+
+#### Получение
+
+SDK сам различает `signatureType` и проверяет агрегированную подпись. Получателю не нужно знать секрет идентификатора, чтобы ее проверить. SDK так же проверяет потребность в агрегированной подписи у зарегестрированного типа сообщения. Вы не получите сообщение, если его тип подписи не соответствует ожидаемому.
+
+```js
+sdk.registerMessage(ChannelMessage, async (header, raw) => {
+	const decoded = await sdk.decode(header, raw);
+	console.log(header.signatureType);
+});
+```
+
+---
 
 Вы можете использовать `Identifier` и `SecretIdentifier` как обычный повторяющийся идентификатор, не прибегая к сложной криптографии, описанной далее. Однако, если Вы хотите охватить все возможности Kaspeak SDK, то рекомендую внимательно ознакомиться со следующим разделом, который способен добавить в прозрачный blockdag элемент конфиденциальности.
 
