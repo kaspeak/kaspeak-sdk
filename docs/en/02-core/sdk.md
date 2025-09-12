@@ -14,7 +14,7 @@ Initialize the SDK:
 import { Kaspeak, randomBytes } from "kaspeak-sdk";
 
 const sdk = await Kaspeak.create(randomBytes(32), "CHAT", "testnet-10");
-await sdk.connect();
+await sdk.connectNode();
 ```
 
 ### `create(privateKey, prefix, networkId?)` Method Parameters
@@ -25,7 +25,7 @@ await sdk.connect();
 
 After calling `create()`, the SDK is fully initialized and ready to connect.
 
-### `connect(url?)` Method Parameters
+### `connectNode(url?)` Method Parameters
 
 * **`url`** *(optional)* — URL to connect to a specific Kaspa node. If not specified, the SDK will automatically select a node.
 
@@ -45,14 +45,14 @@ sdk.on("error", console.error);
 | ------------ | ------------------------ |
 | `message`    | `{ header, data }`       |
 | `balance`    | `{ balance, utxoCount }` |
-| `connect`    | `void`                   |
-| `disconnect` | `void`                   |
+| `node-connect`    | `void`                   |
+| `node-disconnect` | `void`                   |
 | `error`      | `string`                 |
 
 * **`message`** fires for every incoming payload, even if its type is not registered.
 * **`balance`** is triggered on any balance change for the SDK address.
-* **`connect`** is called immediately after successfully establishing an RPC connection to the Kaspa network.
-* **`disconnect`** is triggered when the current RPC connection is closed.
+* **`node-connect`** is called immediately after successfully establishing an RPC connection to the Kaspa network.
+* **`node-disconnect`** is triggered when the current RPC connection is closed.
 * **`error`** is a stub for future functionality.
 
 ---
@@ -62,7 +62,7 @@ sdk.on("error", console.error);
 To create your own message types:
 
 ```js
-class ChatMsg extends BaseMessage {
+class ChatMessage extends BaseMessage {
     static messageType = 1337; // unique message type code
     static requiresEncryption = true; // whether encryption is required
 
@@ -80,7 +80,7 @@ class ChatMsg extends BaseMessage {
     }
 }
 
-sdk.registerMessage(ChatMsg, async (header, rawData) => {
+sdk.registerMessage(ChatMessage, async (header, rawData) => {
     const secret = header.peer.sharedSecret; // retrieve shared secret
     const chat = await sdk.decode(header, rawData, secret);
     console.log(chat.text);
@@ -102,12 +102,7 @@ Encoding and sending a message:
 const encoded = await sdk.encode(messageInstance, secret);
 const tx = await sdk.createTransaction(encoded.length);
 const opIds = sdk.getOutpointIds(tx);
-const payload = await sdk.createPayload(
-    opIds,
-    messageInstance.messageType,
-    SecretIdentifier.random(),
-    encoded
-);
+const payload = await sdk.createPayload(opIds, ChatMessage, SecretIdentifier.random(), encoded);
 await sdk.sendTransaction(tx, payload);
 ```
 

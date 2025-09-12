@@ -12,17 +12,18 @@ Payload always starts with a unique `KSPK` marker (0x4B53454B).
 
 ### Payload Format
 
-| Offset | Field      | Size | Description                            |
-|--------|------------|------|----------------------------------------|
-| 0      | marker     | 4    | Marker `KSPK` (SDK identifier)         |
-| 4      | version    | 1    | Protocol version (currently = 1)       |
-| 5      | prefix     | 4    | Application prefix (ASCII)             |
-| 9      | type       | 2    | Message type (`messageType`)           |
-| 11     | id         | 33   | Message identifier (`Identifier`)      |
-| 44     | publicKey  | 33   | Sender's public key                    |
-| 77     | signature  | 64   | Payload's Schnorr signature            |
-| 141    | dataLen    | 2    | Data length (bytes)                    |
-| 143    | data       | N    | Data (CBOR, compressed, possibly encrypted) |
+| Offset | Field         | Size | Description                                 |
+|--------|---------------|------|---------------------------------------------|
+| 0      | marker        | 4    | Marker `KSPK` (SDK identifier)              |
+| 4      | version       | 1    | Protocol version (currently = 1)            |
+| 5      | prefix        | 4    | Application prefix (ASCII)                  |
+| 9      | type          | 2    | Message type (`messageType`)                |
+| 11     | id            | 33   | Message identifier (`Identifier`)           |
+| 44     | publicKey     | 33   | Sender's public key                         |
+| 77     | signatureType | 1    | Signature type (1 = single, 2 = multi)      |
+| 78     | signature     | 64   | Payload's Schnorr signature                 |
+| 142    | dataLen       | 2    | Data length (bytes)                         |
+| 144    | data          | N    | Data (CBOR, compressed, possibly encrypted) |
 
 ---
 

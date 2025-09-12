@@ -14,7 +14,7 @@
 import { Kaspeak, randomBytes } from "kaspeak-sdk";
 
 const sdk = await Kaspeak.create(randomBytes(32), "CHAT", "testnet-10");
-await sdk.connect();
+await sdk.connectNode();
 ```
 
 ### Параметры метода `create(privateKey, prefix, networkId?)`
@@ -25,7 +25,7 @@ await sdk.connect();
 
 После вызова `create()` SDK полностью инициализирован и готов к подключению.
 
-### Параметры метода `connect(url?)`
+### Параметры метода `connectNode(url?)`
 * **`url`** *(опционально)* — URL для подключения в выбранной Kaspa-ноде. Если значение не указано, адрес для подключения будет выбран автоматически.
 
 ---
@@ -44,14 +44,14 @@ sdk.on("error", console.error);
 | ------------ | ------------------------ |
 | `message`    | `{ header, data }`       |
 | `balance`    | `{ balance, utxoCount }` |
-| `connect`    | `void`                   |
-| `disconnect` | `void`                   |
+| `node-connect`    | `void`                   |
+| `node-disconnect` | `void`                   |
 | `error`      | `string`                 |
 
 * **`message`** срабатывает для каждого входящего payload-а, даже если его тип не зарегистрирован.
 * **`balance`** срабатывает при любом изменении баланса используемого в SDK адреса.
-* **`connect`** вызывается сразу после успешного установления RPC-подключения к сети Kaspa.
-* **`disconnect`** срабатывает, когда текущее RPC-соединение разорвано.
+* **`node-connect`** вызывается сразу после успешного установления RPC-подключения к сети Kaspa.
+* **`node-disconnect`** срабатывает, когда текущее RPC-соединение разорвано.
 * **`error`** заглушка для будущего функционала
 ---
 
@@ -60,7 +60,7 @@ sdk.on("error", console.error);
 Для создания собственных типов сообщений:
 
 ```js
-class ChatMsg extends BaseMessage {
+class ChatMessage extends BaseMessage {
     static messageType = 1337; // уникальный код типа сообщения
     static requiresEncryption = true; // требуется ли шифрование
 
@@ -78,7 +78,7 @@ class ChatMsg extends BaseMessage {
     }
 }
 
-sdk.registerMessage(ChatMsg, async (header, rawData) => {
+sdk.registerMessage(ChatMessage, async (header, rawData) => {
     const secret = header.peer.sharedSecret; // извлечение общего секрета
     const chat = await sdk.decode(header, rawData, secret);
     console.log(chat.text);
@@ -100,12 +100,7 @@ sdk.registerMessage(ChatMsg, async (header, rawData) => {
 const encoded = await sdk.encode(messageInstance, secret);
 const tx = await sdk.createTransaction(encoded.length);
 const opIds = sdk.getOutpointIds(tx);
-const payload = await sdk.createPayload(
-    opIds,
-    messageInstance.messageType,
-    SecretIdentifier.random(),
-    encoded
-);
+const payload = await sdk.createPayload(opIds, ChatMessage, SecretIdentifier.random(), encoded);
 await sdk.sendTransaction(tx, payload);
 ```
 

@@ -1,10 +1,6 @@
 import { sha256 } from "@noble/hashes/sha2";
 import { randomBytes as nobleRandomBytes } from "@noble/hashes/utils";
 
-const P = 115792089237316195423570985008687907853269984665640564039457584007908834671663n;
-const TWO_512 = 1n << 512n;
-const MU = TWO_512 / P;
-
 const HEX: string[] = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"));
 const DECODE: Uint8Array = (() => {
 	const t = new Uint8Array(103);
@@ -37,17 +33,6 @@ export function sha256FromString(data: string): Uint8Array {
 export function mod(a: bigint, m: bigint): bigint {
 	const r = a % m;
 	return r >= 0n ? r : r + m;
-}
-
-export function modP(x: bigint): bigint {
-	let z = x;
-	if (z < 0n) z = (z % P) + P;
-	if (z < P) return z;
-	const q = (z * MU) >> 512n;
-	let r = z - q * P;
-	if (r < 0n) r += P;
-	while (r >= P) r -= P;
-	return r;
 }
 
 function egcdLehmer(a: bigint, b: bigint) {
@@ -142,9 +127,10 @@ export function powModW4(base: bigint, exponent: bigint, modulus: bigint): bigin
 }
 
 export function bytesToHex(bytes: Uint8Array, byteSize?: number): string {
-	let out = "";
-	for (let i = 0; i < bytes.length; i++) out += HEX[bytes[i]];
-	return byteSize === undefined ? out : out.padStart(byteSize * 2, "0");
+	const out: string[] = new Array(bytes.length);
+	for (let i = 0; i < bytes.length; i++) out[i] = HEX[bytes[i]];
+	const s = out.join("");
+	return byteSize === undefined ? s : s.padStart(byteSize * 2, "0");
 }
 
 export function hexToBytes(hex: string): Uint8Array {

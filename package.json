@@ -1,6 +1,6 @@
 {
 	"name": "kaspeak-sdk",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"main": "pkg/cjs/index.cjs",
 	"module": "pkg/esm/index.js",
 	"exports": {
@@ -46,7 +46,12 @@
 		"messenger",
 		"social",
 		"encryption",
-		"wasm"
+		"wasm",
+		"protocol",
+		"transport",
+		"p2p",
+		"networking",
+		"decentralization"
 	],
 	"bugs": {
 		"url": "https://github.com/kaspeak/kaspeak-sdk/issues"

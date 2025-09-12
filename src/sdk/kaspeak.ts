@@ -1,19 +1,47 @@
-import { ensureKaspaInitialized, KaspaWasm } from "../wasm/kaspa";
+import { ensureKaspaInitialized, KaspaWasm } from "../modules/kaspa";
+import { IndexerClient } from "../modules/indexer";
 import { ensureZstdInitialized } from "../utils/compression";
-import { ITransaction, Transaction, PublicKey as KaspaPublicKey } from "kaspa-wasm";
+import { Address as KaspaAddress, ITransaction, PublicKey as KaspaPublicKey, sompiToKaspaString, Transaction } from "kaspa-wasm";
 import { LimitedHashSet } from "../utils/limited-hash-set";
 import { EventBus } from "./event-bus";
 import { BaseMessage, MessageHeader, Payload } from "../models";
 import { MessageClass, MessageRegistry, WorkerFn } from "./message-registry";
 import { MessageSerializer } from "./message-serializer";
-import { hexToBytes, hexToInt, bytesToInt, sha256FromBytes } from "../crypto/utils";
-import { SecretIdentifier, Identifier, Secp256k1, Point } from "../crypto";
-import { HEADER_SIZE, DEFAULT_NETWORK_ID } from "./constants";
+import {
+	bytesToHex,
+	bytesToInt,
+	hexToBytes,
+	hexToInt,
+	Identifier,
+	Point,
+	randomBytes,
+	Secp256k1,
+	SecretIdentifier,
+	sha256FromBytes
+} from "../crypto";
+import { DEFAULT_NETWORK_ID, HEADER_SIZE } from "./constants";
 import { logger } from "../utils/logger";
-import type { Balance, KaspeakEvents, ConversationKeys, BlockMeta, NetworkId, FeeLevel, PaymentOutput } from "./types";
+import type {
+	Balance,
+	BlockMeta,
+	ConversationKeys,
+	FeeLevel,
+	KaspeakEvents,
+	MatureIncomingTx,
+	MessageEvent,
+	MessageRecord,
+	NetworkId,
+	PaymentOutput,
+	QueryRequest,
+	QueryResponse,
+	SignatureType,
+	TransactionOutput,
+	TxReorg
+} from "./types";
 
 export class Kaspeak {
 	private kaspa!: KaspaWasm;
+	private indexer?: IndexerClient;
 
 	/* Wallet */
 	readonly #privateKey: bigint;
@@ -155,6 +183,10 @@ export class Kaspeak {
 		this.#waitForConnectionEnabled = enabled;
 	}
 
+	public setTransactionMaturityDAA(maturityDAA: bigint) {
+		this.kaspa.setTransactionMaturityDAA(maturityDAA);
+	}
+
 	/* ------------------------------ Kaspa RPC -------------------------------- */
 
 	private async ensureConnected(): Promise<void> {
@@ -163,13 +195,13 @@ export class Kaspeak {
 		logger.warn("Waiting for Kaspa RPC connection...");
 		if (!this.#connectPromise) {
 			this.#connectPromise = new Promise<void>((resolve) => {
-				this.eventBus.once("connect", resolve);
+				this.eventBus.once("node-connect", resolve);
 			});
 		}
 		await this.#connectPromise;
 	}
 
-	public async connect(url?: string): Promise<void> {
+	public async connectNode(url?: string): Promise<void> {
 		this.kaspa.on("block-added", async (block) => {
 			const blockMeta = { hash: block.header.hash, timestamp: block.header.timestamp, daaScore: block.header.daaScore };
 			await this.processTransactions(block.transactions, blockMeta);
@@ -179,14 +211,31 @@ export class Kaspeak {
 			this.#utxoCount = utxoCount;
 			this.eventBus.emit("balance", { balance, utxoCount });
 		});
-		this.kaspa.on("connect", () => this.eventBus.emit("connect", undefined));
-		this.kaspa.on("disconnect", () => this.eventBus.emit("disconnect", undefined));
+		this.kaspa.on("mature-incoming-tx", (event: MatureIncomingTx) => {
+			this.eventBus.emit("mature-incoming-tx", event);
+		});
+		this.kaspa.on("tx-reorg", (event: TxReorg) => {
+			this.eventBus.emit("tx-reorg", event);
+		});
+		this.kaspa.on("connect", () => {
+			this.eventBus.emit("node-connect", undefined);
+			this.eventBus.emit("connect", undefined);
+		});
+		this.kaspa.on("disconnect", () => {
+			this.eventBus.emit("node-disconnect", undefined);
+			this.eventBus.emit("disconnect", undefined);
+		});
 
 		await this.kaspa.connect(this.#publicKeyHex, url);
 		await this.kaspa.getServerInfo();
 
 		await this.getBalance();
 		logger.debug("Connected to node and subscribed to new blocks");
+	}
+
+	/** @deprecated This method is deprecated. Use connectNode(url) instead. */
+	public async connect(url?: string): Promise<void> {
+		return this.connectNode(url);
 	}
 
 	public get isConnected(): boolean {
@@ -234,6 +283,24 @@ export class Kaspeak {
 		return this.#utxoCount;
 	}
 
+	get kaspaWasm(): typeof import("kaspa-wasm") {
+		return this.kaspa.kaspa;
+	}
+
+	get kaspaWasmEventBus() {
+		return this.kaspa.eventBus;
+	}
+
+	get utxoProcessor() {
+		return this.kaspa.utxoProcessor;
+	}
+	get rpcClient() {
+		return this.kaspa.rpcClient;
+	}
+	get utxoContext() {
+		return this.kaspa.utxoContext;
+	}
+
 	/* ------------------------------- Events -------------------------------- */
 
 	public on<E extends keyof KaspeakEvents>(event: E, listener: (data: KaspeakEvents[E]) => void): void {
@@ -276,6 +343,9 @@ export class Kaspeak {
 	 * @throws Error if decryption is required but no key is provided.
 	 */
 	public async decode<T extends BaseMessage>(header: MessageHeader, data: Uint8Array, key?: Uint8Array): Promise<T> {
+		if (!this.isSignatureTypeAllowed(header.type, header.signatureType)) {
+			throw new Error(`Signature type ${header.signatureType} is not allowed for message type ${header.type}`);
+		}
 		return MessageSerializer.decode(this.messageRegistry, header, data, key);
 	}
 
@@ -296,7 +366,7 @@ export class Kaspeak {
 		this.messageRegistry.register(message, worker);
 	}
 
-	public callWorker(header: MessageHeader, rawData: Uint8Array): void {
+	private callWorker(header: MessageHeader, rawData: Uint8Array): void {
 		const worker = this.messageRegistry.getWorker(header.type);
 		if (!worker) return;
 		queueMicrotask(() => {
@@ -327,18 +397,29 @@ export class Kaspeak {
 		return this.kaspa.getAddressFromPublicKey(publicKey);
 	}
 
+	public getXPointFromAddress(address: string | KaspaAddress): string {
+		return this.kaspa.getXPointFromAddress(address);
+	}
+
 	/* --------------------------- Payload helpers --------------------------- */
 
 	public async createPayload(
 		outpointIds: string,
-		messageType: number,
+		messageCtor: MessageClass,
 		identifier: SecretIdentifier | Identifier,
 		data: Uint8Array
 	): Promise<string> {
+		const messageType = messageCtor.messageType;
 		if (messageType < 0 || messageType > 65535)
 			throw new Error(`Invalid messageType: ${messageType}. messageType must be between 0 and 65535.`);
-		const payload = new Payload(this.prefixBytes, messageType, identifier, this.#publicKey, data);
-		await payload.sign(outpointIds, this.#privateKey);
+		const signatureType = messageCtor.signatureType;
+		const payload = new Payload(this.prefixBytes, messageType, identifier, this.#publicKey, signatureType, data);
+		if (signatureType === "multi") {
+			if (!(identifier instanceof SecretIdentifier)) throw new Error("SecretIdentifier is required for multi signature");
+			await payload.sign(outpointIds, [this.#privateKey, identifier.secret]);
+		} else {
+			await payload.sign(outpointIds, [this.#privateKey]);
+		}
 		return payload.toHex();
 	}
 
@@ -365,12 +446,14 @@ export class Kaspeak {
 	 *
 	 * @param dataLength – Length of the **encoded message body**; used to
 	 *                     calculate the required payload capacity.
+	 * @param recipients Array of objects { address, amountKas },
+	 *                where amountKas is a number or string in KAS.
 	 * @returns Unsigned `Transaction` ready to be filled and signed.
 	 */
-	public async createTransaction(dataLength: number): Promise<Transaction> {
+	public async createTransaction(dataLength: number, recipients?: PaymentOutput[]): Promise<Transaction> {
 		await this.ensureConnected();
 		const payloadSize = BigInt(dataLength) + BigInt(HEADER_SIZE);
-		return this.kaspa.createTransaction(this.#address, payloadSize, this.#priorityFeeSompi, this.#feeLevel);
+		return this.kaspa.createTransaction(this.#address, payloadSize, this.#priorityFeeSompi, this.#feeLevel, recipients);
 	}
 
 	/**
@@ -383,7 +466,7 @@ export class Kaspeak {
 	 * @param payload     – Hex-encoded Kaspeak payload to embed.
 	 * @returns The resulting transaction ID.
 	 */
-	public async sendTransaction(transaction: Transaction, payload: string): Promise<string> {
+	public async sendTransaction(transaction: Transaction, payload?: string): Promise<string> {
 		await this.ensureConnected();
 		const txid = await this.kaspa.sendTransaction(transaction, this.#privateKey, payload);
 		return txid;
@@ -413,20 +496,15 @@ export class Kaspeak {
 		await this.ensureConnected();
 		let transaction = await this.kaspa.createTransaction(this.#address, 0n, this.#priorityFeeSompi, this.#feeLevel, recipients);
 		logger.debug(transaction);
-		const txid = await this.kaspa.sendTransaction(transaction, this.#privateKey);
-		return txid;
+		return await this.kaspa.sendTransaction(transaction, this.#privateKey);
 	}
 
-	public createMessageHeaderFromTransaction(
-		txid: string,
-		prefix: string,
-		payload: Payload,
-		blockMeta: BlockMeta,
-		consensusHash: string
-	): MessageHeader {
-		const myAddress = this.#address;
-		const address = this.kaspa.getAddressFromPublicKey(payload.publicKey);
-		return MessageHeader.fromTransaction(myAddress, prefix, txid, address, payload, blockMeta, consensusHash, this.#privateKey);
+	private isSignatureTypeAllowed(messageType: number, actual: SignatureType): boolean {
+		const ctor = this.messageRegistry.getCtor(messageType);
+		if (!ctor) return true;
+		const expected = ctor.signatureType;
+		if (expected === "single") return true;
+		return actual === "multi";
 	}
 
 	private async processTransactions(transactions: ITransaction[], blockMeta: BlockMeta): Promise<void> {
@@ -447,16 +525,149 @@ export class Kaspeak {
 				if (this.#signatureVerificationEnabled) {
 					const verified = await payload.verify(consensusHash);
 					if (!verified) {
-						logger.debug(`Payload signature verification failed for txId: ${txid}`);
+						logger.warn(`Payload signature verification failed for txId: ${txid}`);
 						continue;
 					}
 				}
 				logger.debug("Processing transaction:", tx);
-				const messageHeader = this.createMessageHeaderFromTransaction(txid, prefix, payload, blockMeta, consensusHash);
-				this.eventBus.emit("message", { header: messageHeader, data: payload.data });
-				if (prefix === this.prefixString) this.callWorker(messageHeader, payload.data);
+				const address = this.kaspa.getAddressFromPublicKey(payload.publicKey);
+				const isOwn = this.#address === address;
+				const outputs = tx.outputs.map((output) => {
+					if (!(typeof output.scriptPublicKey === "string")) {
+						throw new Error(`Output scriptPublicKey: ${output.scriptPublicKey} has wrong type. Tx skipped`);
+					}
+					const address = output.verboseData!.scriptPublicKeyAddress;
+					const pubKey = (output.scriptPublicKey as string).slice(6, 70);
+
+					const mapped: TransactionOutput = {
+						amount: {
+							kas: sompiToKaspaString(output.value),
+							sompi: output.value
+						},
+						address,
+						pubKey
+					};
+					return mapped;
+				});
+				const isPayment = outputs.filter((output) => output.pubKey !== bytesToHex(payload.publicKey).slice(2)).length > 0;
+
+				logger.debug(`Payment: ${isPayment} , outputs:`, outputs);
+
+				const header = MessageHeader.fromTransaction(
+					prefix,
+					txid,
+					address,
+					outputs,
+					payload,
+					isOwn,
+					isPayment,
+					blockMeta,
+					consensusHash,
+					this.#privateKey
+				);
+				if (!this.isSignatureTypeAllowed(header.type, header.signatureType)) {
+					const ctor = this.messageRegistry.getCtor(header.type);
+					const expected = ctor ? ctor.signatureType : "unknown";
+					logger.warn(
+						`Signature type mismatch: expected ${expected}, got ${header.signatureType}; txid=${txid}. Dropping message.`
+					);
+					continue;
+				}
+				this.eventBus.emit("message", { header, data: payload.data });
+				if (prefix === this.prefixString) this.callWorker(header, payload.data);
 			} catch (e) {
-				if (e instanceof Error) logger.error(`Error processing transaction: ${e.message}, tx=> ${tx}`);
+				if (e instanceof Error) logger.error(`Error processing transaction: ${e.message}, tx=>`, tx);
+			}
+		}
+	}
+
+	/* ---------------------------- Indexer queries --------------------------- */
+
+	public connectIndexer(url?: string): void {
+		if (this.indexer?.isConnected) return;
+		this.indexer = new IndexerClient();
+		this.indexer.on("message", (r) => {
+			this.processIndexerResponse(r).catch(() => {});
+		});
+		this.indexer.on("connect", () => this.eventBus.emit("indexer-connect", undefined));
+		this.indexer.on("disconnect", () => this.eventBus.emit("indexer-disconnect", undefined));
+		this.indexer.connect(url);
+	}
+
+	public indexerSend(request: QueryRequest): void {
+		if (!this.indexer) throw new Error("Indexer is not connected");
+		logger.debug("IndexerSend", request);
+		this.indexer.send(request);
+	}
+
+	public async indexerRequest(request: QueryRequest, parsed?: false): Promise<QueryResponse>;
+	public async indexerRequest(request: QueryRequest, parsed: true): Promise<MessageEvent[]>;
+	public async indexerRequest(request: QueryRequest, parsed?: boolean, timeout?: number): Promise<QueryResponse | MessageEvent[]> {
+		if (!this.indexer) throw new Error("Indexer is not connected");
+		if (!request.id) request.id = bytesToHex(randomBytes(16));
+		logger.debug("IndexerRequest", request);
+		const finalTimeout = timeout ?? 30000;
+		const r = await this.indexer.sendQuery(request, finalTimeout);
+		if (!r.ok) {
+			if (parsed) return [];
+			return r;
+		}
+		const events: MessageEvent[] = [];
+		const filtered: MessageRecord[] = [];
+		for (const rec of r.data) {
+			const evt = await this.validateIndexerRecord(rec, r.id);
+			if (evt) {
+				events.push(evt);
+				filtered.push(rec);
+			}
+		}
+		if (parsed) return events;
+		return { id: r.id, count: r.count, ok: true, data: filtered };
+	}
+
+	private async validateIndexerRecord(
+		rec: MessageRecord,
+		requestId?: string
+	): Promise<{ header: MessageHeader; data: Uint8Array } | null> {
+		const payload = Payload.fromIndexerRecord(rec);
+		const prefix = payload.getPrefix();
+		if (this.#prefixFilterEnabled && prefix !== this.prefixString) return null;
+		if (this.#signatureVerificationEnabled) {
+			const verified = await payload.verify(rec.consensusHash);
+			if (!verified) {
+				logger.warn("Indexer response signature verification failed", rec.txid);
+				return null;
+			}
+		}
+		const address = rec.address;
+		const isOwn = this.#address === address;
+		const header = MessageHeader.fromIndexerRecord(rec, prefix, payload, isOwn, this.#privateKey, requestId);
+		if (!this.isSignatureTypeAllowed(header.type, header.signatureType)) {
+			const ctor = this.messageRegistry.getCtor(header.type);
+			const expected = ctor ? ctor.signatureType : "unknown";
+			logger.warn(
+				`Signature type mismatch (indexer): expected ${expected}, got ${header.signatureType}; txid=${rec.txid}. Dropping message.`
+			);
+			return null;
+		}
+		return { header, data: payload.data };
+	}
+
+	private async processIndexerResponse(r: QueryResponse): Promise<void> {
+		if (!r.ok) {
+			logger.warn("Indexer response error", r.id, r.err);
+			return;
+		}
+		const reqId = r.id;
+		logger.debug("Indexer response ok, reqId:", reqId, "count:", r.count, "records:", r.data.length);
+		for (const rec of r.data) {
+			try {
+				const evt = await this.validateIndexerRecord(rec, reqId);
+				if (!evt) continue;
+				this.eventBus.emit("message", evt);
+				if (evt.header.prefix === this.prefixString) this.callWorker(evt.header, evt.data);
+			} catch (e) {
+				logger.error("processIndexerResponse error", e);
 			}
 		}
 	}
